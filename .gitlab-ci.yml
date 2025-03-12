@@ -1,0 +1,69 @@
+stages:
+  - build
+  - release
+  - test
+  - migrate
+  - deploy
+
+variables:
+  CONTAINER_IMAGE: registry.gitlab.com/your-group/python-k8-app
+
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    - docker build -t $CONTAINER_IMAGE:${CI_COMMIT_REF_SLUG}_${CI_COMMIT_SHA} .
+    - docker push $CONTAINER_IMAGE:${CI_COMMIT_REF_SLUG}_${CI_COMMIT_SHA}
+  only:
+    - main
+
+release:
+  stage: release
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker pull $CONTAINER_IMAGE:${CI_COMMIT_REF_SLUG}_${CI_COMMIT_SHA}
+    - docker tag $CONTAINER_IMAGE:${CI_COMMIT_REF_SLUG}_${CI_COMMIT_SHA} $CONTAINER_IMAGE:latest
+    - docker push $CONTAINER_IMAGE:latest
+  only:
+    - main
+  dependencies:
+    - build
+
+test_kubernetes:
+  stage: test
+  image: bitnami/kubectl:latest
+  script:
+    - echo $KUBE_CONFIG | base64 --decode > k8s/kubeconfig.yaml
+    - kubectl --kubeconfig=k8s/kubeconfig.yaml get nodes
+  only:
+    - main
+  dependencies:
+    - release
+
+migrate:
+  stage: migrate
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl apply -f k8s/migration-job.yaml
+    - kubectl wait --for=condition=complete --timeout=300s job/db-migration
+  only:
+    - main
+  dependencies:
+    - test_kubernetes
+
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl set image deployment/fastapi-app app=$CONTAINER_IMAGE:latest
+    - kubectl apply -f k8s/deployment.yaml
+    - kubectl apply -f k8s/service.yaml
+  only:
+    - main
+  dependencies:
+    - migrate

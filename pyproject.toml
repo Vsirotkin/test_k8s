@@ -1,0 +1,17 @@
+[project]
+requires-python = ">=3.11"
+name = "python-k8-app"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+dependencies = [
+    "alembic>=1.15.1",
+    "databases[sqlite]>=0.9.0",
+    "fastapi[standard]>=0.115.11",
+    "pydantic>=2.10.6",
+    "sqlalchemy>=2.0.38",
+    "uvicorn[standard]>=0.34.0",
+]
+
+[build-system]
+requires = ["setuptools>=76.0.0", "wheel"]

@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"  # Проброс порта: хост -> контейнер
+    volumes:
+      - ./app.db:/app/app.db  # Монтируем SQLite базу данных
+    environment:
+      - DATABASE_URL=sqlite:///./app.db
+    command: >
+      bash -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 80"

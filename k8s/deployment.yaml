@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastapi-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fastapi
+  template:
+    metadata:
+      labels:
+        app: fastapi
+    spec:
+      containers:
+        - name: app
+          image: registry.gitlab.com/your-group/python-k8-app:latest
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: sqlite-storage
+              mountPath: /app/app.db
+      volumes:
+        - name: sqlite-storage
+          emptyDir: {}
